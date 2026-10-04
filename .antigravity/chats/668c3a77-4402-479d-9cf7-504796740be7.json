@@ -3,6 +3,31 @@
   "name": "KHERLEED DATA │ ┌──────────┴──────────┐ │ │",
   "createdAt": "2026-10-04T11:42:29.821Z",
   "filename": "668c3a77-4402-479d-9cf7-504796740be7.json",
-  "geminiStarted": false,
-  "messages": []
+  "geminiStarted": true,
+  "messages": [
+    {
+      "id": "ec7e24ed-41eb-4b11-bb1c-158f46e3a5c1",
+      "role": "user",
+      "content": "KHERLEED DATA\n                         │\n              ┌──────────┴──────────┐\n              │                     │\n           CUSTOMER               AGENT\n              │                     │\n              └──────────┬──────────┘\n                         │\n                    WALLET SYSTEM\n                         │\n              ┌──────────┴──────────┐\n              │                     │\n       VIRTUAL ACCOUNT          ONLINE PAYMENT\n              │                     │\n              └──────────┬──────────┘\n                         │\n                    WALLET BALANCE\n                         │\n        ┌────────────────┼────────────────┐\n        │                │                │\n       DATA            AIRTIME         BILLS\n        │                │                │\n       MTN             MTN              DSTV\n      Airtel           Airtel            GOTV\n       Glo              Glo            Electricity\n     9mobile          9mobile\n\n\n\nBut for now I’ll not include bills maybe in the future",
+      "status": "cancelled",
+      "model": "gemini-3.8-flash-high",
+      "client_type": "gemini-bridge",
+      "parent_message_id": null,
+      "created_at": "2026-10-04T11:43:01.878Z",
+      "sender": "ios",
+      "is_cancelled": true
+    },
+    {
+      "id": "16fe9d3d-bb44-4536-b77e-b7757889a3ad",
+      "role": "user",
+      "content": "KHERLEED DATA\n                         │\n              ┌──────────┴──────────┐\n              │                     │\n           CUSTOMER               AGENT\n              │                     │\n              └──────────┬──────────┘\n                         │\n                    WALLET SYSTEM\n                         │\n              ┌──────────┴──────────┐\n              │                     │\n       VIRTUAL ACCOUNT          ONLINE PAYMENT\n              │                     │\n              └──────────┬──────────┘\n                         │\n                    WALLET BALANCE\n                         │\n        ┌────────────────┼────────────────┐\n        │                │                │\n       DATA            AIRTIME         BILLS\n        │                │                │\n       MTN             MTN              DSTV\n      Airtel           Airtel            GOTV\n       Glo              Glo            Electricity\n     9mobile          9mobile\n\n\n\nBut for now I’ll not include bills maybe in the future",
+      "status": "pending",
+      "model": "gemini-3.8-flash-high",
+      "client_type": "gemini-bridge",
+      "parent_message_id": null,
+      "created_at": "2026-10-04T11:44:45.426Z",
+      "sender": "ios",
+      "is_cancelled": false
+    }
+  ]
 }
