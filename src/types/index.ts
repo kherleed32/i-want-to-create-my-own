@@ -6,6 +6,9 @@ export interface UserProfile {
   phone: string;
   email: string;
   role: UserRole;
+  pin?: string;
+  tier?: "BRONZE" | "SILVER" | "GOLD" | "VIP";
+  cashbackBalance?: number;
   virtualAccounts: VirtualAccount[];
   createdAt: string;
 }

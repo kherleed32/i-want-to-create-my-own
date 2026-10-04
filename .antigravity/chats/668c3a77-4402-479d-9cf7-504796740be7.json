@@ -28,6 +28,18 @@
       "created_at": "2026-10-04T11:44:45.426Z",
       "sender": "ios",
       "is_cancelled": false
+    },
+    {
+      "id": "bc3a732a-88d6-40f4-a996-05fdba753bc0",
+      "role": "user",
+      "content": "opened the live Vercel site and checked the page content. It is loading successfully now. \n\nI also found a few things I would correct before you start showing it to customers:\n\n🔴 1. The wallet balance is showing ₦4,720.00\n\nThe live website currently displays:\n\nWallet Balance — ₦4,720.00 \n\nIf this is supposed to be a demo/test balance, that’s okay. But on a real customer-facing platform, every user must have their own wallet balance, not a fixed balance displayed to everyone.\n\n🟠 2. “View all 3 banks” doesn’t match what is shown\n\nThe page currently shows:\n\nDedicated Bank Transfer Number: Wema Bank — 7923481029\nView all 3 banks \n\nBut only Wema is visible on the main screen. That’s fine if clicking it opens the other two, but we should verify that button actually works.\n\n🟠 3. “Direct telecom API routing” is currently too strong\n\nThe site says:\n\n“Direct telecom API routing delivers data & airtime to any network in 5–15 seconds.” \n\nIf you haven’t connected a real VTU/data API yet, I recommend changing this to something like “Fast automated delivery” for now. We shouldn’t advertise a real 5–15 second telecom API service until the backend is actually connected.\n\n🟠 4. “Automated bank transfer accounts” also needs to be real\n\nIt currently says:\n\n“Automated bank transfer accounts (Wema, Moniepoint, PalmPay) for zero-delay wallet credit.” \n\nThis is something we’ll need to implement properly when we connect your payment provider. Otherwise customers may expect those accounts to actually work.\n\n🟢 5. The basic UI structure looks good\n\nThe live page already has:\n\n* Buy Data\n* Buy Airtime\n* Reseller / Agent Hub\n* Transactions\n* Customer/Agent switching\n* Wallet\n* Virtual Account\n* Online Payment\n* MTN, Airtel, Glo and 9mobile\n* Data plans\n* Phone-number/network detection\n* Agent pricing \n\nSo the foundation is definitely there.\n\n⚠️ One important thing\n\nThe biggest issue isn’t actually the appearance. It’s that the current site is still largely a frontend/demo system.\n\nBefore we call KHERLEED DATA a real VTU platform, we need to connect:\n\nCustomer → Account → Wallet → Payment gateway → Transaction database → VTU/Data API → Delivery → Transaction history → Receipt\n\nAnd, as you previously chose, wallet funding should use option B: a small funding charge on deposits rather than you absorbing the payment fee.\n\nSo I would not redesign the whole thing yet. The UI is good enough to move to the next stage.     And I want the UI design to be luxury design like for Alrahuzdata design.",
+      "status": "pending",
+      "model": "gemini-3.8-flash-high",
+      "client_type": "gemini-bridge",
+      "parent_message_id": null,
+      "created_at": "2026-10-04T12:27:55.707Z",
+      "sender": "ios",
+      "is_cancelled": false
     }
   ]
 }

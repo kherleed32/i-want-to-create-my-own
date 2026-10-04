@@ -23,6 +23,21 @@ export function formatNumber(amount: number): string {
 }
 
 /**
+ * Option B Funding Fee Calculation:
+ * A nominal processing charge on automated bank deposits / online gateways.
+ * E.g., 1.2% (min ₦20, capped at ₦60) or flat nominal fee.
+ */
+export const OPTION_B_FEE_PERCENT = 0.012; // 1.2%
+export const OPTION_B_MIN_FEE = 20; // ₦20 minimum
+export const OPTION_B_MAX_FEE = 65; // ₦65 maximum cap
+
+export function calculateOptionBFee(amount: number): number {
+  if (amount <= 0) return 0;
+  const rawFee = Math.round(amount * OPTION_B_FEE_PERCENT);
+  return Math.min(Math.max(rawFee, OPTION_B_MIN_FEE), OPTION_B_MAX_FEE);
+}
+
+/**
  * Detects the Nigerian network based on the first 4 or 5 digits of the phone number.
  */
 export function detectNetwork(phone: string): NetworkType | null {

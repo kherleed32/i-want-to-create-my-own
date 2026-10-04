@@ -8,7 +8,7 @@ import {
   Beneficiary,
   NetworkType,
 } from "@/types";
-import { generateReference, createId } from "@/lib/utils";
+import { generateReference, createId, calculateOptionBFee, formatNaira } from "@/lib/utils";
 
 interface ToastMessage {
   id: string;
@@ -19,6 +19,7 @@ interface ToastMessage {
 interface AppContextType {
   user: UserProfile;
   setUser: React.Dispatch<React.SetStateAction<UserProfile>>;
+  updateUserProfile: (data: Partial<UserProfile>) => void;
   walletBalance: number;
   transactions: Transaction[];
   beneficiaries: Beneficiary[];
@@ -28,6 +29,8 @@ interface AppContextType {
   setIsVirtualModalOpen: (open: boolean) => void;
   isOnlinePayModalOpen: boolean;
   setIsOnlinePayModalOpen: (open: boolean) => void;
+  isProfileModalOpen: boolean;
+  setIsProfileModalOpen: (open: boolean) => void;
   selectedReceipt: Transaction | null;
   setSelectedReceipt: (tx: Transaction | null) => void;
   toasts: ToastMessage[];
@@ -37,10 +40,13 @@ interface AppContextType {
   // Actions
   toggleRole: () => void;
   setRole: (role: UserRole) => void;
+  resetWallet: () => void;
+  loadDemoBalance: (amount?: number) => void;
   fundWallet: (
     amount: number,
     method: "VIRTUAL_ACCOUNT" | "CARD_ONLINE",
-    notes?: string
+    notes?: string,
+    deductFee?: boolean
   ) => Promise<Transaction>;
   executePurchase: (data: {
     type: "DATA" | "AIRTIME";
@@ -59,6 +65,9 @@ const DEFAULT_USER: UserProfile = {
   phone: "08123456789",
   email: "khaleed@kherleeddata.com",
   role: "CUSTOMER",
+  pin: "1234",
+  tier: "VIP",
+  cashbackBalance: 0,
   createdAt: "2026-01-15T09:30:00Z",
   virtualAccounts: [
     {
@@ -82,39 +91,6 @@ const DEFAULT_USER: UserProfile = {
   ],
 };
 
-const INITIAL_TRANSACTIONS: Transaction[] = [
-  {
-    id: "tx-init-1",
-    reference: "KHL-WEMA-98213",
-    type: "WALLET_FUND_VIRTUAL",
-    title: "Wallet Credit (Virtual Bank Transfer)",
-    amount: 5000,
-    balanceBefore: 0,
-    balanceAfter: 5000,
-    status: "SUCCESS",
-    paymentMethod: "VIRTUAL_ACCOUNT",
-    createdAt: "2026-10-03T10:00:00Z",
-    notes: "Direct bank transfer received via Wema Bank Virtual Account",
-  },
-  {
-    id: "tx-init-2",
-    reference: "KHL-DAT-47291",
-    type: "DATA",
-    title: "MTN 1.0 GB SME Data",
-    network: "MTN",
-    recipientPhone: "08031234567",
-    planName: "1.0 GB SME (30 Days)",
-    amount: 280,
-    discountOrProfit: 0,
-    balanceBefore: 5000,
-    balanceAfter: 4720,
-    status: "SUCCESS",
-    paymentMethod: "WALLET",
-    createdAt: "2026-10-04T08:30:00Z",
-    notes: "Direct top-up successful to 08031234567",
-  },
-];
-
 const INITIAL_BENEFICIARIES: Beneficiary[] = [
   {
     id: "ben-1",
@@ -135,6 +111,9 @@ const INITIAL_BENEFICIARIES: Beneficiary[] = [
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  // Check whether we have initialized v2 (which cleans the old hardcoded 4720 balance)
+  const isV2Ready = typeof window !== "undefined" && localStorage.getItem("kherleed_v2_clean_balance") === "true";
+
   const [user, setUser] = useState<UserProfile>(() => {
     if (typeof window !== "undefined") {
       try {
@@ -147,28 +126,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return DEFAULT_USER;
   });
 
+  // Default wallet balance is strictly ₦0.00 for real customer view
   const [walletBalance, setWalletBalance] = useState<number>(() => {
     if (typeof window !== "undefined") {
       try {
+        if (!isV2Ready) {
+          // Clean out old demo balance 4720
+          localStorage.setItem("kherleed_v2_clean_balance", "true");
+          localStorage.setItem("kherleed_balance", "0");
+          return 0;
+        }
         const saved = localStorage.getItem("kherleed_balance");
-        if (saved) return parseFloat(saved);
+        if (saved !== null) return parseFloat(saved);
       } catch {
         // fallback
       }
     }
-    return 4720;
+    return 0;
   });
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     if (typeof window !== "undefined") {
       try {
+        if (!isV2Ready) {
+          localStorage.setItem("kherleed_transactions", JSON.stringify([]));
+          return [];
+        }
         const saved = localStorage.getItem("kherleed_transactions");
         if (saved) return JSON.parse(saved);
       } catch {
         // fallback
       }
     }
-    return INITIAL_TRANSACTIONS;
+    return [];
   });
 
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>(() => {
@@ -186,12 +176,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [activeTab, setActiveTab] = useState<"data" | "airtime" | "bills" | "transactions" | "agent-hub">("data");
   const [isVirtualModalOpen, setIsVirtualModalOpen] = useState(false);
   const [isOnlinePayModalOpen, setIsOnlinePayModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState<Transaction | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   // Save changes to localStorage
   useEffect(() => {
     try {
+      localStorage.setItem("kherleed_v2_clean_balance", "true");
       localStorage.setItem("kherleed_user", JSON.stringify(user));
       localStorage.setItem("kherleed_balance", walletBalance.toString());
       localStorage.setItem("kherleed_transactions", JSON.stringify(transactions));
@@ -213,6 +205,58 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }, 4500);
   }, [removeToast]);
 
+  const updateUserProfile = useCallback((data: Partial<UserProfile>) => {
+    setUser((prev) => {
+      const updatedName = data.name !== undefined ? data.name : prev.name;
+      const updatedAccounts = prev.virtualAccounts.map((acc) => ({
+        ...acc,
+        accountName: `KHERLEED - ${updatedName}`,
+      }));
+
+      const updated = {
+        ...prev,
+        ...data,
+        virtualAccounts: updatedAccounts,
+      };
+      showToast("Profile details updated successfully!", "success");
+      return updated;
+    });
+  }, [showToast]);
+
+  const resetWallet = useCallback(() => {
+    setWalletBalance(0);
+    setTransactions([]);
+    try {
+      localStorage.setItem("kherleed_balance", "0");
+      localStorage.setItem("kherleed_transactions", JSON.stringify([]));
+    } catch {
+      // Ignore
+    }
+    showToast("Wallet reset to fresh customer balance: ₦0.00", "info");
+  }, [showToast]);
+
+  const loadDemoBalance = useCallback((amount: number = 5000) => {
+    const balanceBefore = walletBalance;
+    const balanceAfter = balanceBefore + amount;
+    const newTx: Transaction = {
+      id: createId("tx-demo"),
+      reference: generateReference("KHL-DEMO"),
+      type: "WALLET_FUND_ONLINE",
+      title: "Test Drive Demo Credit",
+      amount,
+      balanceBefore,
+      balanceAfter,
+      status: "SUCCESS",
+      paymentMethod: "WALLET",
+      createdAt: new Date().toISOString(),
+      notes: "Demo testing funds loaded for live simulation",
+    };
+
+    setWalletBalance(balanceAfter);
+    setTransactions((prev) => [newTx, ...prev]);
+    showToast(`Loaded ${formatNaira(amount)} demo test funds into your wallet!`, "success");
+  }, [walletBalance, showToast]);
+
   const toggleRole = useCallback(() => {
     setUser((prev) => {
       const newRole: UserRole = prev.role === "CUSTOMER" ? "AGENT" : "CUSTOMER";
@@ -229,31 +273,45 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setUser((prev) => ({ ...prev, role }));
   }, []);
 
+  /**
+   * Option B Wallet Funding:
+   * A nominal processing charge applies on automated deposits.
+   */
   const fundWallet = useCallback(async (
     amount: number,
     method: "VIRTUAL_ACCOUNT" | "CARD_ONLINE",
-    notes?: string
+    notes?: string,
+    deductFee: boolean = true
   ): Promise<Transaction> => {
+    const fee = deductFee ? calculateOptionBFee(amount) : 0;
+    const netCredited = amount - fee;
     const balanceBefore = walletBalance;
-    const balanceAfter = balanceBefore + amount;
+    const balanceAfter = balanceBefore + netCredited;
 
     const newTx: Transaction = {
       id: createId("tx"),
       reference: generateReference(method === "VIRTUAL_ACCOUNT" ? "KHL-VA" : "KHL-CARD"),
       type: method === "VIRTUAL_ACCOUNT" ? "WALLET_FUND_VIRTUAL" : "WALLET_FUND_ONLINE",
-      title: method === "VIRTUAL_ACCOUNT" ? "Bank Transfer (Virtual Account)" : "Online Payment (Card/Gateway)",
-      amount,
+      title: method === "VIRTUAL_ACCOUNT" ? "Bank Transfer (Dedicated Virtual Account)" : "Online Payment Gateway",
+      amount: netCredited,
+      discountOrProfit: fee,
       balanceBefore,
       balanceAfter,
       status: "SUCCESS",
       paymentMethod: method,
       createdAt: new Date().toISOString(),
-      notes: notes || `Wallet top-up via ${method === "VIRTUAL_ACCOUNT" ? "Dedicated Virtual Account" : "Online Checkout"}`,
+      notes: notes || `Option B Deposit: Gross ${formatNaira(amount)}, Fee ${formatNaira(fee)}, Net credited ${formatNaira(netCredited)}`,
     };
 
     setWalletBalance(balanceAfter);
     setTransactions((prev) => [newTx, ...prev]);
-    showToast(`Wallet credited with ₦${amount.toLocaleString()} successfully!`, "success");
+
+    if (fee > 0) {
+      showToast(`Wallet credited with ${formatNaira(netCredited)}! (Option B fee: ${formatNaira(fee)})`, "success");
+    } else {
+      showToast(`Wallet credited with ${formatNaira(netCredited)} successfully!`, "success");
+    }
+
     return newTx;
   }, [walletBalance, showToast]);
 
@@ -308,7 +366,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       status: "SUCCESS",
       paymentMethod: "WALLET",
       createdAt: new Date().toISOString(),
-      notes: `Successful delivery to ${data.recipientPhone} (${data.network})`,
+      notes: `Automated fast delivery to ${data.recipientPhone} (${data.network})`,
     };
 
     setWalletBalance(balanceAfter);
@@ -321,7 +379,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       network: data.network,
     });
 
-    showToast(`${data.type === "DATA" ? "Data" : "Airtime"} purchase of ₦${data.amount.toLocaleString()} was successful!`, "success");
+    showToast(`${data.type === "DATA" ? "Data bundle" : "Airtime"} purchase of ${formatNaira(data.amount)} was successful!`, "success");
     return { success: true, transaction: newTx };
   }, [walletBalance, showToast, addBeneficiary]);
 
@@ -330,6 +388,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         setUser,
+        updateUserProfile,
         walletBalance,
         transactions,
         beneficiaries,
@@ -339,6 +398,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setIsVirtualModalOpen,
         isOnlinePayModalOpen,
         setIsOnlinePayModalOpen,
+        isProfileModalOpen,
+        setIsProfileModalOpen,
         selectedReceipt,
         setSelectedReceipt,
         toasts,
@@ -346,6 +407,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         removeToast,
         toggleRole,
         setRole,
+        resetWallet,
+        loadDemoBalance,
         fundWallet,
         executePurchase,
         addBeneficiary,

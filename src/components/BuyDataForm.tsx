@@ -29,6 +29,7 @@ export default function BuyDataForm() {
     setIsVirtualModalOpen,
     setSelectedReceipt,
     toggleRole,
+    showToast,
   } = useApp();
 
   const [selectedNetwork, setSelectedNetwork] = useState<NetworkType>("MTN");
